@@ -63,11 +63,6 @@ nextEmptyRowIndexSpace board colNum  =  5 -(colTokenHeight col)
     where 
         col = getCol board colNum
 
-isColFull :: Board -> Int -> Bool
-isColFull board colNum 
-    | (nextEmptyRowIndexSpace board colNum) <= (-1)      = True
-    | otherwise                         = False
-
 putTokenRow :: [Player] -> Int -> Player -> [Player]
 putTokenRow row colNum token   = beforeTokenList ++ [token] ++ afterTokenList
     where
@@ -116,13 +111,37 @@ isWinCol board token = [fourInARow (getCol board i) token | i <- [0..6]]
 isWinRow :: Board -> Player -> [Bool]
 isWinRow board token = [fourInARow (getRow board i) token | i <- [0..5]]
 
-isWin     ::   Board -> Player-> Bool
+-- / diagonals
+-- From stackoverflow https://stackoverflow.com/questions/32465776/getting-all-the-diagonals-of-a-matrix-in-haskell
+rightDiagonals :: [[a]] -> [[a]]
+rightDiagonals = tail . go [] where
+    -- it is critical for some applications that we start producing answers
+    -- before inspecting es_
+    go b es_ = [h | h:_ <- b] : case es_ of
+        []   -> transpose ts
+        e:es -> go (e:ts) es
+        where ts = [t | _:t <- b]
+
+getRightDiag :: [[a]] -> [[a]]
+getRightDiag board = filter (\x -> length x >= 4) (rightDiagonals board)
+
+lengthRDiag :: Board -> Player -> Int
+lengthRDiag board token = length (getRightDiag board)
+
+isWinRDiag :: Board -> Player -> [Bool]
+isWinRDiag board token = [fourInARow (getRow diag2DList i) token | i <- [0..(size-1)]] 
+    where
+        diag2DList = getRightDiag board
+        size = lengthRDiag board token 
+
+isWin     ::   Board -> Player -> Bool
 isWin board player  
-    | numOfTrueCol + numOfTrueRow >= 1         = True
-    | otherwise                 = False
+    | numOfTrueCol + numOfTrueRow + numOfTrueRDiag >= 1         = True
+    | otherwise                                = False
     where
         numOfTrueCol = length ( filter (== True) (isWinCol board player))
         numOfTrueRow = length ( filter (== True) (isWinRow board player))
+        numOfTrueRDiag = length ( filter (== True) (isWinRDiag board player))
 
 play :: Board -> Int -> Player -> Board
 play board colNum token = if (validCol colNum board ) then (putToken token colNum board)
@@ -136,6 +155,7 @@ info = do   putStrLn " Welcome to 368 Connect 4 "
             printBoard emptyBoard
 main :: IO ()
 main = do   info
+            putStrLn ("---Starting game---")
             startGame emptyBoard
 
 startGame   :: Board ->  IO ()
@@ -147,8 +167,12 @@ startGame board
             putStrLn ("Enter row number")
             userInput <- getLine
             let input = (read userInput :: Int)
-           
+            
             board <- pure (play board input whichPlayer)
-            printBoard board
+            printBoard board    
             startGame board 
-    where whichPlayer = currPlayer board 
+    where 
+        whichPlayer = currPlayer board 
+
+
+    
