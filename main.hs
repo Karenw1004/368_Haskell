@@ -24,8 +24,6 @@ printBoard board =  putStrLn (unlines((map printRow board) ++ [replicate 7 '=' ]
 emptyBoard :: Board
 emptyBoard = replicate 6 (replicate 7 Empty)
 
-testB :: Board
-testB = [[Empty,Empty,Empty,Empty,Empty,Empty,Empty],[Empty,Empty,Empty,Empty,Empty,Empty,Empty],[Empty,Empty,Empty,Empty,Empty,Empty,P1],[Empty,Empty,Empty,Empty,Empty,Empty,P1],[Empty,Empty,Empty,Empty,Empty,P2,P1],[P2,Empty,Empty,Empty,P1,P2,P1]]
 ---------------------------------------------------------------------------
 -- Winner Checker (Find 4 same token O or X)
 -- Check - 
@@ -44,6 +42,20 @@ getCol board colNum = (transpose board) !! colNum
 
 getRow :: Board -> Int -> [Player]
 getRow board rowNum = board !! rowNum 
+
+-- / diagonals
+-- From stackoverflow https://stackoverflow.com/questions/32465776/getting-all-the-diagonals-of-a-matrix-in-haskell
+rightDiagonals :: [[a]] -> [[a]]
+rightDiagonals = tail . go [] where
+    -- it is critical for some applications that we start producing answers
+    -- before inspecting es_
+    go b es_ = [h | h:_ <- b] : case es_ of
+        []   -> transpose ts
+        e:es -> go (e:ts) es
+        where ts = [t | _:t <- b]
+
+getRightDiag :: [[a]] -> [[a]]
+getRightDiag board = filter (\x -> length x >= 4) (rightDiagonals board)
 
 isColNotFull    :: Board -> Int -> Bool
 isColNotFull board colNum = Empty `elem` (getCol board colNum)
@@ -84,6 +96,12 @@ turnPlayer board player = length ( filter ( == player) (listRow))
         -- concat [[a]] -> [a]
         listRow = concat board
 
+-- know who is the current player
+currPlayer      :: Board -> Player
+currPlayer board  
+    | isBoardFull board                                 = Empty
+    | (turnPlayer board P1) > (turnPlayer board P2 )    = P2
+    | otherwise                                         = P1
 
 -- Check if board is full
 isBoardFull :: Board -> Bool
@@ -93,37 +111,12 @@ isBoardFull board
     where 
         -- concat [[a]] -> [a]
         listRow = concat board
-        
--- know who is the current player
-currPlayer      :: Board -> Player
-currPlayer board  
-    | isBoardFull board                                 = Empty
-    | (turnPlayer board P1) > (turnPlayer board P2 )    = P2
-    | otherwise                                         = P1
-
-playerToString :: Player -> String
-playerToString P1 = "Player 1 O"
-playerToString P2 = "Player 2 X"
 
 isWinCol :: Board -> Player -> [Bool]
 isWinCol board token = [fourInARow (getCol board i) token | i <- [0..6]]
 
 isWinRow :: Board -> Player -> [Bool]
 isWinRow board token = [fourInARow (getRow board i) token | i <- [0..5]]
-
--- / diagonals
--- From stackoverflow https://stackoverflow.com/questions/32465776/getting-all-the-diagonals-of-a-matrix-in-haskell
-rightDiagonals :: [[a]] -> [[a]]
-rightDiagonals = tail . go [] where
-    -- it is critical for some applications that we start producing answers
-    -- before inspecting es_
-    go b es_ = [h | h:_ <- b] : case es_ of
-        []   -> transpose ts
-        e:es -> go (e:ts) es
-        where ts = [t | _:t <- b]
-
-getRightDiag :: [[a]] -> [[a]]
-getRightDiag board = filter (\x -> length x >= 4) (rightDiagonals board)
 
 lengthRDiag :: Board -> Player -> Int
 lengthRDiag board token = length (getRightDiag board)
@@ -147,16 +140,15 @@ play :: Board -> Int -> Player -> Board
 play board colNum token = if (validCol colNum board ) then (putToken token colNum board)
                          else board
                          
-
 info :: IO ()
 info = do   putStrLn " Welcome to 368 Connect 4 "
             putStrLn "To win you have to have 4 in a row token horizontally or vertically"
             putStrLn "Player 1 ( O ) and Player 2 ( X)"
             printBoard emptyBoard
-main :: IO ()
-main = do   info
-            putStrLn ("---Starting game---")
-            startGame emptyBoard
+        
+playerToString :: Player -> String
+playerToString P1 = "Player 1 O"
+playerToString P2 = "Player 2 X"
 
 startGame   :: Board ->  IO ()
 startGame board
@@ -174,5 +166,8 @@ startGame board
     where 
         whichPlayer = currPlayer board 
 
-
+main :: IO ()
+main = do   info
+            putStrLn ("---Starting game---")
+            startGame emptyBoard
     
